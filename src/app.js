@@ -102,8 +102,10 @@ async function replyToEmailsandAddLabel(auth) {
       const thread = threadResponse.data;
       const messagesInThread = thread.messages || [];
       console.log(messagesInThread.length);
+      
+      //------------------------!!!!!LOGIC PART needs to be updated!!!---------------------------------//
       // If no prior replies, send a reply
-      if (messagesInThread.length === 1) {
+      if (messagesInThread.length === 1 ) {
         const { subject, to, messageId } = getMessageHeaders(messageResponse);
         const replyMessage = createReplyMessage(
           subject,
