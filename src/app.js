@@ -1,8 +1,8 @@
 const { google } = require("googleapis");
 const authorize = require("./authorize");
 
-const EMAIL_CHECK_INTERVAL_MIN = 0;
-const EMAIL_CHECK_INTERVAL_MAX = 20;
+const EMAIL_CHECK_INTERVAL_MIN = 45;
+const EMAIL_CHECK_INTERVAL_MAX = 120;
 
 /**
  * Starts the email processing loop.
@@ -10,13 +10,15 @@ const EMAIL_CHECK_INTERVAL_MAX = 20;
  * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
  */
 async function startEmailProcessing(auth) {
+  const interval = getRandomInterval();
+  console.log("Set an interval : ", interval/1000, ", Please wait");
   setInterval(() => {
     checkEmails(auth)
       .then(replyToEmailsandAddLabel)
       .catch((error) => {
         console.error("Error processing emails:", error);
       });
-  }, getRandomInterval());
+  }, interval);
 }
 
 /**
@@ -73,7 +75,7 @@ async function checkEmails(auth) {
       `\n+---------------------------------------------------------------------------------------+`
     );
 
-    if (count > 9) break;
+    if (count > 10) break;
   }
 
   return auth;
@@ -90,7 +92,9 @@ async function replyToEmailsandAddLabel(auth) {
     });
     const messages = response.data.messages || [];
 
+    let count = 0;
     for (const message of messages) {
+      count++;
       const threadResponse = await gmail.users.threads.get({
         userId: "me",
         id: message.threadId,
@@ -101,11 +105,9 @@ async function replyToEmailsandAddLabel(auth) {
       });
       const thread = threadResponse.data;
       const messagesInThread = thread.messages || [];
-      console.log(messagesInThread.length);
-      
-      //------------------------!!!!!LOGIC PART needs to be updated!!!---------------------------------//
+
       // If no prior replies, send a reply
-      if (messagesInThread.length === 1 ) {
+      if (messagesInThread.length === 1) {
         const { subject, to, messageId } = getMessageHeaders(messageResponse);
         const replyMessage = createReplyMessage(
           subject,
@@ -117,7 +119,7 @@ async function replyToEmailsandAddLabel(auth) {
         console.log("Reply sent to message ID:", message.id);
 
         // Add a label to the sent reply
-        const labelName = "PREMIUM"; // Replace with your desired label name
+        const labelName = "PREMIUM";
         const labelId = await getOrCreateLabel(auth, labelName);
 
         const response_label_add = await gmail.users.messages.modify({
@@ -135,6 +137,7 @@ async function replyToEmailsandAddLabel(auth) {
           " as the chat has more than or equal to 2 threads"
         );
       }
+      if(count > 10) break; // A test cap of 10 messages
     }
   } catch (error) {
     console.error("Error replying to emails:", error);
